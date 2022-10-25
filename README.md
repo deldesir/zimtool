@@ -1,2 +1,2 @@
 # zimify
-An attempt to grasp the complexity of the openzim code base using the test-driven development approach.
+An attempt to explore the ingenuity and grasp the subtleties of the openzim code base..
