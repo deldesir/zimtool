@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "zimify"
+version = "0.1.0"
+description = "Generate ZIM files using openzim tools"
+authors = ["Blondel MONDESIR <blondel.md@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
