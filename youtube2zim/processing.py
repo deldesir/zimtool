@@ -37,9 +37,7 @@ def post_process_video(video_dir, video_id, preset, video_format, low_quality):
 
     # find downloaded video from video_dir
     files = [
-        p
-        for p in video_dir.iterdir()
-        if p.stem == "video" and p.suffix not in (".jpg", ".webp")
+        p for p in video_dir.iterdir() if p.stem == "video" and p.suffix not in (".jpg", ".webp")
     ]
 
     if len(files) == 0:
@@ -57,6 +55,4 @@ def post_process_video(video_dir, video_id, preset, video_format, low_quality):
         return
 
     dst_path = src_path.with_name(f"video.{video_format}")
-    reencode(
-        src_path, dst_path, preset.to_ffmpeg_args(), delete_src=True, failsafe=False
-    )
+    reencode(src_path, dst_path, preset.to_ffmpeg_args(), delete_src=True, failsafe=False)

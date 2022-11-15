@@ -40,9 +40,7 @@ class YoutubeHandler:
         self.build_dir = pathlib.Path(tempfile.mkdtemp())
 
         # metadata_from JSON file
-        self.metadata_from = (
-            pathlib.Path(self.metadata_from) if self.metadata_from else None
-        )
+        self.metadata_from = pathlib.Path(self.metadata_from) if self.metadata_from else None
         self.metadata = {}  # custom metadata holder
 
         # update youtube credentials store
@@ -54,7 +52,7 @@ class YoutubeHandler:
 
     @property
     def youtube2zim_exe(self):
-        """ youtube2zim executable """
+        """youtube2zim executable"""
 
         # handle either `python youtube2zim` and `youtube2zim`
         cmd = "youtube2zim"
@@ -115,7 +113,7 @@ class YoutubeHandler:
                 return process.returncode
 
     def run_playlist_zim(self, playlist):
-        """ run youtube2zim for an individual playlist """
+        """run youtube2zim for an individual playlist"""
 
         playlist_id = playlist.playlist_id
         args = self.youtube2zim_exe + [
@@ -142,9 +140,7 @@ class YoutubeHandler:
             "banner",
         ):
             # use value from metadata JSON if present else from command-line
-            value = metadata.get(
-                key, getattr(self, f"playlists_{key.replace('-', '_')}", None)
-            )
+            value = metadata.get(key, getattr(self, f"playlists_{key.replace('-', '_')}", None))
 
             if value:  # only set arg if we have a value so it can be defaulted
                 # format value using playlists' variables
@@ -163,7 +159,7 @@ class YoutubeHandler:
         return process.returncode == 0, process
 
     def handle_single_zim(self):
-        """ redirect request to standard youtube2zim """
+        """redirect request to standard youtube2zim"""
 
         args = (
             self.youtube2zim_exe
@@ -186,7 +182,7 @@ class YoutubeHandler:
         return fmt.format(**playlist.__dict__(), **{"period": "{period}"})
 
     def fetch_metadata(self):
-        """ retrieves and loads metadata from --metadata-from """
+        """retrieves and loads metadata from --metadata-from"""
 
         if not self.metadata_from:
             return
@@ -198,23 +194,15 @@ class YoutubeHandler:
                 self.metadata = requests.get(str(self.metadata_from)).json()
             else:
                 if not self.metadata_from.exists():
-                    raise IOError(
-                        f"--metadata-from file could not be found: {self.metadata_from}"
-                    )
+                    raise IOError(f"--metadata-from file could not be found: {self.metadata_from}")
                 with open(self.metadata_from, "r") as fh:
                     self.metadata = json.load(fh)
         except Exception as exc:
             logger.debug(exc)
-            raise ValueError(
-                f"--metadata-from could not be loaded as JSON: {self.metadata_from}"
-            )
+            raise ValueError(f"--metadata-from could not be loaded as JSON: {self.metadata_from}")
 
         # ensure the basic format is respected: dict of playlist ID to dict of meta
         if not isinstance(self.metadata, dict) or len(self.metadata) != sum(
-            [
-                1
-                for k, v in self.metadata.items()
-                if isinstance(k, str) and isinstance(v, dict)
-            ]
+            [1 for k, v in self.metadata.items() if isinstance(k, str) and isinstance(v, dict)]
         ):
             raise ValueError("--metadata-from JSON is of unexpected format")
