@@ -54,7 +54,7 @@ class YoutubeHandler:
 
     @property
     def youtube2zim_exe(self):
-        """youtube2zim executable"""
+        """ youtube2zim executable """
 
         # handle either `python youtube2zim` and `youtube2zim`
         cmd = "youtube2zim"
@@ -70,8 +70,7 @@ class YoutubeHandler:
             return self.handle_single_zim()
 
         logger.info(
-            f"starting all-playlits {NAME} scraper "
-            f"for {self.collection_type}#{self.youtube_id}"
+            f"starting all-playlits {NAME} scraper for {self.collection_type}#{self.youtube_id}"
         )
 
         # create required sub folders
@@ -116,7 +115,7 @@ class YoutubeHandler:
                 return process.returncode
 
     def run_playlist_zim(self, playlist):
-        """run youtube2zim for an individual playlist"""
+        """ run youtube2zim for an individual playlist """
 
         playlist_id = playlist.playlist_id
         args = self.youtube2zim_exe + [
@@ -164,7 +163,7 @@ class YoutubeHandler:
         return process.returncode == 0, process
 
     def handle_single_zim(self):
-        """redirect request to standard youtube2zim"""
+        """ redirect request to standard youtube2zim """
 
         args = (
             self.youtube2zim_exe
@@ -180,14 +179,14 @@ class YoutubeHandler:
         )
         if self.debug:
             args.append("--debug")
-        return subprocess.run(args).returncode
+        sys.exit(subprocess.run(args).returncode)
 
     @staticmethod
     def compute_format(playlist, fmt):
         return fmt.format(**playlist.__dict__(), **{"period": "{period}"})
 
     def fetch_metadata(self):
-        """retrieves and loads metadata from --metadata-from"""
+        """ retrieves and loads metadata from --metadata-from """
 
         if not self.metadata_from:
             return

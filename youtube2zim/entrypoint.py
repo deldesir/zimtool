@@ -4,7 +4,6 @@
 
 import argparse
 import logging
-import sys
 
 from .constants import CHANNEL, NAME, PLAYLIST, SCRAPER, USER, YOUTUBE, logger
 from .scraper import Youtube2Zim
@@ -61,8 +60,7 @@ def main():
     )
     parser.add_argument(
         "--autoplay",
-        help="Enable autoplay on video articles (home never have autoplay). "
-        "Behavior differs on platforms/browsers.",
+        help="Enable autoplay on video articles (home never have autoplay). Behavior differs on platforms/browsers.",
         action="store_true",
         default=False,
     )
@@ -75,9 +73,15 @@ def main():
     )
 
     parser.add_argument(
+        "--custom_titles",
+        help="Replace titles with the ones retrieved from a csv file",
+        default=False,
+        dest="custom_titles",
+    )
+
+    parser.add_argument(
         "--tmp-dir",
-        help="Path to create temp folder in. Used for building ZIM file. "
-        "Receives all data (storage space)",
+        help="Path to create temp folder in. Used for building ZIM file. Receives all data (storage space)",
     )
 
     parser.add_argument(
@@ -89,8 +93,7 @@ def main():
 
     parser.add_argument(
         "--zim-file",
-        help="ZIM file name (based on --name if not provided). "
-        "If used, {period} is replaced with date as of YYYY-MM",
+        help="ZIM file name (based on --name if not provided). If used, {period} is replaced with date as of YYYY-MM",
         dest="fname",
     )
 
@@ -100,21 +103,18 @@ def main():
 
     parser.add_argument(
         "--locale",
-        help="Locale name to use for translations (if avail) and time representations. "
-        "Defaults to --language or English.",
+        help="Locale name to use for translations (if avail) and time representations. Defaults to --language or English.",
         dest="locale_name",
     )
 
     parser.add_argument(
         "--title",
-        help="Custom title for your project and ZIM. "
-        "Default to Channel name (of first video if playlists)",
+        help="Custom title for your project and ZIM. Default to Channel name (of first video if playlists)",
     )
 
     parser.add_argument(
         "--description",
-        help="Custom description for your project and ZIM. "
-        "Default to Channel name (of first video if playlists)",
+        help="Custom description for your project and ZIM. Default to Channel name (of first video if playlists)",
     )
 
     parser.add_argument(
@@ -128,15 +128,13 @@ def main():
 
     parser.add_argument(
         "--tags",
-        help="List of comma-separated Tags for the ZIM file. "
-        "_videos:yes added automatically",
+        help="List of comma-separated Tags for the ZIM file. _videos:yes added automatically",
         default="youtube",
     )
 
     parser.add_argument(
         "--profile",
-        help="Custom profile image (path or URL). Squared. "
-        "Will be resized to 100x100px",
+        help="Custom profile image (path or URL). Squared. Will be resized to 100x100px",
         dest="profile_image",
     )
 
@@ -148,14 +146,12 @@ def main():
 
     parser.add_argument(
         "--main-color",
-        help="Custom color. Hex/HTML syntax (#DEDEDE). "
-        "Default to main color of profile image.",
+        help="Custom color. Hex/HTML syntax (#DEDEDE). Default to main color of profile image.",
     )
 
     parser.add_argument(
         "--secondary-color",
-        help="Custom secondary color. Hex/HTML syntax (#DEDEDE). "
-        "Default to secondary color of profile image.",
+        help="Custom secondary color. Hex/HTML syntax (#DEDEDE). Default to secondary color of profile image.",
     )
 
     parser.add_argument(
@@ -187,8 +183,7 @@ def main():
 
     parser.add_argument(
         "--dateafter",
-        help="Custom filter to download videos uploaded on or after specified date. "
-        "Format: YYYYMMDD or (now|today)[+-][0-9](day|week|month|year)(s)?",
+        help="Custom filter to download videos uploaded on or after specified date. Format: YYYYMMDD or (now|today)[+-][0-9](day|week|month|year)(s)?",
     )
 
     parser.add_argument(
@@ -211,13 +206,13 @@ def main():
         if args.max_concurrency < 1:
             raise ValueError(f"Invalid concurrency value: {args.max_concurrency}")
         scraper = Youtube2Zim(**dict(args._get_kwargs()), youtube_store=YOUTUBE)
-        return scraper.run()
+        scraper.run()
     except Exception as exc:
         logger.error(f"FAILED. An error occurred: {exc}")
         if args.debug:
             logger.exception(exc)
-        return 1
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

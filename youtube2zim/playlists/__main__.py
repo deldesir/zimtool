@@ -12,8 +12,8 @@ def main():
 
     from youtube2zim.playlists.entrypoint import main as entry
 
-    return entry()
+    entry()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

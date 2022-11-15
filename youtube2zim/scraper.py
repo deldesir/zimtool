@@ -9,24 +9,26 @@
 """
 
 import concurrent.futures
+import csv
 import datetime
 import functools
+from gettext import gettext as _
 import json
 import locale
 import os
+from pathlib import Path
 import re
 import shutil
 import subprocess
 import tempfile
-from gettext import gettext as _
-from pathlib import Path
 
-import jinja2
-import yt_dlp
 from babel.dates import format_date
 from dateutil import parser as dt_parser
+import jinja2
 from kiwixstorage import KiwixStorage
 from pif import get_public_ip
+from pytube import extract
+import yt_dlp
 from zimscraperlib.download import stream_file
 from zimscraperlib.fix_ogvjs_dist import fix_source_dir
 from zimscraperlib.i18n import NotFound, get_language_details, setlocale
@@ -36,15 +38,7 @@ from zimscraperlib.image.transformation import resize_image
 from zimscraperlib.video.presets import VideoMp4Low, VideoWebmLow
 from zimscraperlib.zim import make_zim_file
 
-from .constants import (
-    CHANNEL,
-    PLAYLIST,
-    ROOT_DIR,
-    SCRAPER,
-    USER,
-    YOUTUBE_LANG_MAP,
-    logger,
-)
+from .constants import CHANNEL, PLAYLIST, ROOT_DIR, SCRAPER, USER, YOUTUBE_LANG_MAP, logger
 from .processing import post_process_video, process_thumbnail
 from .utils import clean_text, get_slug, load_json, save_json
 from .youtube import (
@@ -84,6 +78,7 @@ class Youtube2Zim:
         dateafter,
         use_any_optimized_version,
         s3_url_with_credentials,
+        custom_titles,
         title=None,
         description=None,
         creator=None,
@@ -120,6 +115,7 @@ class Youtube2Zim:
         self.banner_image = banner_image
         self.main_color = main_color
         self.secondary_color = secondary_color
+        self.custom_titles = custom_titles
 
         # directory setup
         self.output_dir = Path(output_dir).expanduser().resolve()
@@ -127,7 +123,12 @@ class Youtube2Zim:
             tmp_dir = Path(tmp_dir).expanduser().resolve()
             tmp_dir.mkdir(parents=True, exist_ok=True)
         self.build_dir = Path(tempfile.mkdtemp(dir=tmp_dir))
-
+        
+        # log file creation
+        log = Path('/output/run.log')
+        log.touch(exist_ok=True)
+        f = open(log)
+        
         # process-related
         self.playlists = []
         self.uploads_playlist_id = None
@@ -218,7 +219,7 @@ class Youtube2Zim:
 
     @property
     def sorted_playlists(self):
-        """sorted list of playlists (by title) but with Uploads one at first if any"""
+        """ sorted list of playlists (by title) but with Uploads one at first if any """
         if len(self.playlists) < 2:
             return self.playlists
 
@@ -237,11 +238,11 @@ class Youtube2Zim:
         return (
             [sorted_playlists[index]]
             + sorted_playlists[0:index]
-            + sorted_playlists[index + 1 :]
+            + sorted_playlists[index + 1:]
         )
 
     def run(self):
-        """execute the scraper step by step"""
+        """ execute the scraper step by step """
 
         self.validate_id()
 
@@ -382,7 +383,7 @@ class Youtube2Zim:
             raise ValueError("Invalid YoutubeId")
 
     def prepare_build_folder(self):
-        """prepare build folder before we start downloading data"""
+        """ prepare build folder before we start downloading data """
 
         # copy assets
         shutil.copytree(self.assets_src_dir, self.assets_dir)
@@ -471,6 +472,25 @@ class Youtube2Zim:
             # we only return video_ids that we'll use later on. per-playlist JSON stored
             for playlist in self.playlists:
                 videos_json = get_videos_json(playlist.playlist_id)
+                if self.custom_titles:
+                    # we define variables in case we need to replace sth with values from a csv file as per ZW footprint
+                    videos_ids_list = []
+                    videos_titles_list = []
+                    t_index = 0
+                    with open(self.custom_titles, "r") as ct:
+                        data = csv.reader(ct,delimiter=',')
+            
+                        for row in data:
+                            id = row[0]
+                            title = row[1]
+                            id = extract.video_id(id)
+                            videos_ids_list.append(id)
+                            videos_titles_list.append(title)
+                    logger.info(f"Replacing titles using {self.custom_titles}")
+                    for items in videos_json:
+                        if t_index < len(videos_titles_list):
+                            items["snippet"]["title"] = videos_titles_list[t_index]
+                            t_index += 1
                 # filter in videos within date range and filter away deleted videos
                 skip_outofrange = functools.partial(
                     skip_outofrange_videos, self.dateafter
@@ -572,7 +592,7 @@ class Youtube2Zim:
         return overall_succeeded, overall_failed
 
     def download_from_cache(self, key, video_path, encoder_version):
-        """whether it successfully downloaded from cache"""
+        """ whether it successfully downloaded from cache """
         if self.use_any_optimized_version:
             if not self.s3_storage.has_object(key, self.s3_storage.bucket_name):
                 return False
@@ -591,7 +611,7 @@ class Youtube2Zim:
         return True
 
     def upload_to_cache(self, key, video_path, encoder_version):
-        """whether it successfully uploaded to cache"""
+        """ whether it successfully uploaded to cache """
         try:
             self.s3_storage.upload_file(
                 video_path, key, meta={"encoder_version": f"v{encoder_version}"}
@@ -603,7 +623,7 @@ class Youtube2Zim:
         return True
 
     def download_video(self, video_id, options):
-        """download the video from cache/youtube and return True if successful"""
+        """ download the video from cache/youtube and return True if successful """
 
         preset = {"mp4": VideoMp4Low}.get(self.video_format, VideoWebmLow)()
         options_copy = options.copy()
@@ -652,7 +672,7 @@ class Youtube2Zim:
             return True
 
     def download_thumbnail(self, video_id, options):
-        """download the thumbnail from cache/youtube and return True if successful"""
+        """ download the thumbnail from cache/youtube and return True if successful """
 
         preset = WebpHigh()
         options_copy = options.copy()
@@ -695,7 +715,7 @@ class Youtube2Zim:
             return True
 
     def download_subtitles(self, video_id, options):
-        """download subtitles for a video"""
+        """ download subtitles for a video """
 
         options_copy = options.copy()
         options_copy.update({"skip_download": True, "writethumbnail": False})
@@ -706,9 +726,9 @@ class Youtube2Zim:
             logger.error(f"Could not download subtitles for {video_id}")
 
     def download_video_files_batch(self, options, videos_ids):
-        """download video file and thumbnail for all videos in batch
+        """ download video file and thumbnail for all videos in batch
 
-        returning succeeded and failed video ids"""
+        returning succeeded and failed video ids """
 
         succeeded = []
         failed = []
@@ -826,7 +846,7 @@ class Youtube2Zim:
                     shutil.rmtree(path, ignore_errors=True)
 
         def is_present(video):
-            """whether this video has actually been succeffuly downloaded"""
+            """ whether this video has actually been succeffuly downloaded """
             return video["contentDetails"]["videoId"] in actual_videos_ids
 
         def video_has_channel(videos_channels, video):
@@ -847,10 +867,9 @@ class Youtube2Zim:
                             YOUTUBE_LANG_MAP.get(lang, lang)
                         )
                     except NotFound:
-                        lang_simpl = re.sub(r"^([a-z]{2})-.+$", r"\1", lang)
                         subtitle = get_language_details(
-                            YOUTUBE_LANG_MAP.get(lang_simpl, lang_simpl)
-                        )
+                                re.sub(r"^([a-z]{2})-.+$", r"\1", lang)
+                            )
                 except Exception:
                     logger.error(f"Failed to get language details for {lang}")
                     raise
@@ -956,6 +975,25 @@ class Youtube2Zim:
                 playlist_videos = load_json(
                     self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
                 )
+                if self.custom_titles:
+                    # we define variables in case we need to replace sth with values from a csv file as per ZW footprint
+                    videos_ids_list = []
+                    videos_titles_list = []
+                    t_index = 0
+                    with open(self.custom_titles, "r") as ct:
+                        data = csv.reader(ct,delimiter=',')
+            
+                        for row in data:
+                            id = row[0]
+                            title = row[1]
+                            id = extract.video_id(id)
+                            videos_ids_list.append(id)
+                            videos_titles_list.append(title)
+                    logger.info(f"Replacing titles using {self.custom_titles}")
+                    for items in playlist_videos:
+                        if t_index < len(videos_titles_list):
+                            items["snippet"]["title"] = videos_titles_list[t_index]
+                            t_index += 1
                 # filtering-out missing ones (deleted or not downloaded)
                 playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
                 playlist_videos = list(filter(is_present, playlist_videos))
