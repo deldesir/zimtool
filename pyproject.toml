@@ -29,7 +29,7 @@ google-auth-oauthlib = {version = "*", optional = true}
 google-auth-httplib2 = {version = "*", optional = true}
 jinja2 = {version = "^2.11, <3.0", optional = true}
 kiwixstorage = {version = "^0.8.1", optional = true}
-markupsafe = {version = "*", optional = true}
+MarkupSafe = {version = "*", optional = true}
 oauth2client = {version = "*", optional = true}
 python = "^3.8, <3.12"
 python-dateutil = "*"
